@@ -28,16 +28,12 @@ import java.util.Map;
 public class JobDVResults {
 
     private final int projectId;
-
     private final int execid;
     private final String jobId;
-    private final String flowId;
     private final String jobReturnStatus;
     private final Long resultCount;
     private final Long expectedCount;
     private final Long check_time;
-
-
 
 
     public Long getCheck_time() {
@@ -56,9 +52,6 @@ public class JobDVResults {
         return jobId;
     }
 
-    public String getFlowId() {
-        return flowId;
-    }
 
     public String getJobReturnStatus() {
         return jobReturnStatus;
@@ -73,27 +66,25 @@ public class JobDVResults {
     }
 
 
-    public Map<String,Object> getKeyValue(){
+    public Map<String, Object> getKeyValue() {
         Map<String, Object> e = new HashedMap();
-        e.put("execid",getExecid());
-        e.put("projectId",getProjectId());
-        e.put("jobId",getJobId());
-        e.put("flowId",getFlowId());
-        e.put("jobReturnStatus",getJobReturnStatus());
-        e.put("resultCount",getResultCount());
-        e.put("expectedCount",getExpectedCount());
-        e.put("check_time",getCheck_time());
+        e.put("execid", getExecid());
+        e.put("projectId", getProjectId());
+        e.put("jobId", getJobId());
+        e.put("jobReturnStatus", getJobReturnStatus());
+        e.put("resultCount", getResultCount());
+        e.put("expectedCount", getExpectedCount());
+        e.put("check_time", getCheck_time());
         return e;
 
     }
 
 
-    public JobDVResults(int projectId, int execid, String jobId, String flowId, Long check_time, String jobReturnStatus, Long resultCount, Long expectedCount) {
+    public JobDVResults(int projectId, int execId, String jobId, Long check_time, String jobReturnStatus, Long resultCount, Long expectedCount) {
 
         this.projectId = projectId;
-        this.execid = execid;
+        this.execid = execId;
         this.jobId = jobId;
-        this.flowId = flowId;
         this.jobReturnStatus = jobReturnStatus;
         this.resultCount = resultCount;
         this.expectedCount = expectedCount;

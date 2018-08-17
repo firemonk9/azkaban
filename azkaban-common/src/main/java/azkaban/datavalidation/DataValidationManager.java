@@ -23,10 +23,10 @@ public class DataValidationManager {
     }
 
 
-    public void updateDVResults(int projectId, int execid, String jobId, String flowId, String jobReturnStatus, Long resultCount, Long expectedCount) {
+    public void updateDVResults(int projectId, int execid, String jobId, String jobReturnStatus, Long resultCount, Long expectedCount) {
 
         try {
-            jobDVResultsDao.insertJobResults(projectId, execid, jobId, flowId, jobReturnStatus, resultCount, expectedCount);
+            jobDVResultsDao.insertJobResults(projectId, execid, jobId, resultCount, expectedCount);
         } catch (ExecutorManagerException e) {
             e.printStackTrace();
         }

@@ -32,3 +32,5 @@ include 'az-hadoop-jobtype-plugin'
 include 'az-jobsummary'
 include 'az-hdfs-viewer'
 include 'tools'
+include 'dataQ'
+

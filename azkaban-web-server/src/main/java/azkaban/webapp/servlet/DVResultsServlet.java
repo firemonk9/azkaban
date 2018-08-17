@@ -181,7 +181,6 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
             e.printStackTrace();
         }
 
-
     }
 
 
@@ -190,18 +189,18 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
             throws ServletException, IOException {
 
         final User user = session.getUser();
-        final Integer projectId = Integer.parseInt((String) multipart.get("projectId"));
+        final Integer projectId = Integer.parseInt((String) multipart.get("project_id"));
         final String jobReturnStatus = (String) multipart.get("jobReturnStatus");
         final Long resultCount = Long.parseLong((String) multipart.get("resultCount"));
         final Long expectedCount = Long.parseLong((String) multipart.get("expectedCount"));
-        final int execid = Integer.parseInt((String) multipart.get("execid"));
-        final String jobId = (String) multipart.get("jobid");
+        final int execId = Integer.parseInt((String) multipart.get("exec_id"));
+        final String jobId = (String) multipart.get("job_id");
         String flowId = "DEFAULT";
         //ExecutableNode node=null;
         try {
-            ExecutableFlow flow = this.executorManager.getExecutableFlow(execid);
+            ExecutableFlow flow = this.executorManager.getExecutableFlow(execId);
             //node = flow.getExecutableNodePath(jobId);
-            flowId = flow.getFlowId();
+//            flowId = flow.getFlowId();
 
         } catch (ExecutorManagerException e) {
             e.printStackTrace();
@@ -224,7 +223,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
         ret.put("projectId", String.valueOf(project.getId()));
 
         final FileItem item = (FileItem) multipart.get("file");
-        final String name = item.getName();
+        final String fileName = item.getName();
         String type = null;
 
         final String contentType = item.getContentType();
@@ -243,13 +242,13 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
         final File tempDir = Utils.createTempDir();
         OutputStream out = null;
         try {
-            logger.info("Uploading file  " + name);
-            final File archiveFile = new File(tempDir, name);
+            logger.info("Uploading file  " + fileName);
+            final File archiveFile = new File(tempDir, fileName);
             out = new BufferedOutputStream(new FileOutputStream(archiveFile));
             IOUtils.copy(item.getInputStream(), out);
             out.close();
 
-            String pathToStoreResults = projectManager.getProps().getString("azkaban.dataValidation.resultsDir") + "/" + execid + ".zip";
+            String pathToStoreResults = projectManager.getProps().getString("azkaban.dataValidation.resultsDir") + "/" + fileName ;
 
             // move the file to new location with new name,
 
@@ -257,7 +256,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
 
             logger.info("writing to " + archiveFile.getAbsolutePath().toString());
 
-            dataValidationManager.updateDVResults(projectId, execid, jobId, flowId, jobReturnStatus, resultCount, expectedCount);
+            dataValidationManager.updateDVResults(projectId, execId, jobId, jobReturnStatus, resultCount, expectedCount);
 
             //unscheduleall/scheduleall should only work with flow which has defined flow trigger
             //unschedule all flows within the old project

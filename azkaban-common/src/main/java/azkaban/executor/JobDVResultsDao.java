@@ -39,16 +39,16 @@ public class JobDVResultsDao {
         this.dbOperator = databaseOperator;
     }
 
-    public void insertJobResults(int projectId, int execid, String jobId, String flowId, String jobReturnStatus, Long resultCount, Long expectedCount)
+    public void insertJobResults(int projectId, int execid, String jobId,  Long resultCount, Long expectedCount)
             throws ExecutorManagerException {
 
 //1, 0, 1, shell_end, null, 1532377898291, PASS, 1
-        logger.info("Uploading flowId " + flowId);
+        logger.info("Uploading flowId " + jobId);
         try {
-            this.dbOperator.update(INSERT_EXECUTION_NODE, execid,
-                    0, projectId, flowId,1,
+            this.dbOperator.update(INSERT_EXECUTION_NODE, projectId,
+                    execid, jobId,
                     System.currentTimeMillis(),
-                    true, resultCount);
+                    true, resultCount,expectedCount,"COMPLETED");
         } catch (final SQLException e) {
             throw new ExecutorManagerException("Error writing job " + 0, e);
         }
@@ -93,19 +93,17 @@ public class JobDVResultsDao {
 
             final ArrayList<JobDVResults> events = new ArrayList<>();
             do {
-                final int exec_id = rs.getInt(1);
-                final int dv_id = rs.getInt(2);
-                final int project_id = rs.getInt(3);
-                final String flow_id = rs.getString(4);
-                final String job_id = rs.getString(5);
-                final Long check_time = rs.getLong(6);
-                final String result = rs.getString(7);
-                final Long result_value = rs.getLong(8);
-                final Long expected_value = rs.getLong(9);
+                final int project_id = rs.getInt(1);
+                final int exec_id = rs.getInt(2);
+                final String job_id = rs.getString(3);
+                final Long check_time = rs.getLong(4);
+                final String result = rs.getString(5);
+                final Long result_value = rs.getLong(6);
+                final Long expected_value = rs.getLong(7);
 
                 final JobDVResults event =
                         new JobDVResults(project_id, exec_id, job_id,
-                                flow_id, check_time, result, result_value, expected_value);
+                                 check_time, result, result_value, expected_value);
                 events.add(event);
             } while (rs.next());
 
@@ -114,16 +112,16 @@ public class JobDVResultsDao {
     }
 
     private static final String SELECT_EXECUTOR_RESULTS =
-            "SELECT exec_id, dv_id, project_id, flow_id, job_id, check_time, result,result_value, expected_value FROM job_dv_results "
+            "SELECT exec_id, project_id,  job_id, check_time, result,result_value, expected_value FROM job_dv_results "
                     + " WHERE project_id=? ORDER BY check_time ";
 
     private static final String SELECT_EXECUTOR_RESULTS_FLOW =
-            "SELECT exec_id, dv_id, project_id, flow_id, job_id, check_time, result,result_value, expected_value FROM job_dv_results "
+            "SELECT exec_id, project_id,  job_id, check_time, result,result_value, expected_value FROM job_dv_results "
                     + " WHERE project_id=? and exec_id = ? ORDER BY check_time ";
 
     private static final String INSERT_EXECUTION_NODE = "INSERT INTO job_dv_results "
-            + "(exec_id, dv_id, project_id, flow_id, job_id,  check_time, "
-            + "result, result_value) VALUES (?,?,?,?,?,?,?,?)";
+            + "(project_id,exec_id,  job_id,  check_time, "
+            + "result, result_value, expected_value, job_status) VALUES (?,?,?,?,?,?,?,?)";
 //1, 0, 1, shell_end, null, 1532377898291, PASS, 1
 
 }
