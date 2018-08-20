@@ -39,16 +39,15 @@ public class JobDVResultsDao {
         this.dbOperator = databaseOperator;
     }
 
-    public void insertJobResults(int projectId, int execid, String jobId,  Long resultCount, Long expectedCount)
+    public void insertJobResults(int projectId, int execid, String jobId,  Long resultCount, Long expectedCount,String jobReturnStatus)
             throws ExecutorManagerException {
 
-//1, 0, 1, shell_end, null, 1532377898291, PASS, 1
-        logger.info("Uploading flowId " + jobId);
+        logger.info("Status from project id " + projectId+"  jobId "+jobId);
         try {
             this.dbOperator.update(INSERT_EXECUTION_NODE, projectId,
                     execid, jobId,
                     System.currentTimeMillis(),
-                    true, resultCount,expectedCount,"COMPLETED");
+                    true, resultCount,expectedCount,jobReturnStatus);
         } catch (final SQLException e) {
             throw new ExecutorManagerException("Error writing job " + 0, e);
         }
