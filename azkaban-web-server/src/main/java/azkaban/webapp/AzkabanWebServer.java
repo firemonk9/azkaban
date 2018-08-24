@@ -509,6 +509,7 @@ public class AzkabanWebServer extends AzkabanServer {
         root.addServlet(new ServletHolder(new FlowTriggerInstanceServlet()), "/flowtriggerinstance");
         root.addServlet(new ServletHolder(new FlowTriggerServlet()), "/flowtrigger");
         root.addServlet(new ServletHolder(new DVResultsServlet()), "/dvResults");
+        root.addServlet(new ServletHolder(new DVFlowUplaod()), "/dvFlowUpload");
 
 
         final ServletHolder restliHolder = new ServletHolder(new RestliServlet());

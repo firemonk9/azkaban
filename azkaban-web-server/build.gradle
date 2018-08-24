@@ -55,7 +55,7 @@ dependencies {
     compile project(':az-core')
     compile(project(':azkaban-common'))
     compile(project(':az-flow-trigger-dependency-plugin'))
-
+    compile files('lib/dataqAzkabanBridge.jar')
     compile deps.restliServer
     compile deps.velocityTools
 

@@ -26,6 +26,8 @@ import azkaban.flow.Flow;
 import azkaban.flowtrigger.quartz.FlowTriggerScheduler;
 import azkaban.project.Project;
 import azkaban.project.ProjectManager;
+import azkaban.project.ProjectManagerException;
+import azkaban.project.validator.ValidationReport;
 import azkaban.project.validator.ValidatorConfigs;
 import azkaban.scheduler.ScheduleManager;
 import azkaban.server.session.Session;
@@ -33,9 +35,12 @@ import azkaban.user.Permission.Type;
 import azkaban.user.Role;
 import azkaban.user.User;
 import azkaban.user.UserManager;
+import azkaban.user.UserUtils;
 import azkaban.utils.Props;
 import azkaban.utils.Utils;
 import azkaban.webapp.AzkabanWebServer;
+import com.dataq.azkaban.main.PrepareJob;
+import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -51,12 +56,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DVResultsServlet extends LoginAbstractAzkabanServlet {
+public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
 
-    private static final String APPLICATION_ZIP_MIME_TYPE = "application/zip";
+    private static final String APPLICATION_JSON = "application/json";
     private static final long serialVersionUID = 1;
     private static final Logger logger = Logger
-            .getLogger(DVResultsServlet.class);
+            .getLogger(DVFlowUplaod.class);
 
     private static final String LOCKDOWN_CREATE_PROJECTS_KEY =
             "lockdown.create.projects";
@@ -113,7 +118,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
                         8192);
 
         logger.info("downloadBufferSize: " + this.downloadBufferSize);
-
+        logger.info("##################");
     }
 
     @Override
@@ -128,26 +133,164 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
 
     }
 
-    @Override
-    protected void handleMultiformPost(final HttpServletRequest req,
-                                       final HttpServletResponse resp, final Map<String, Object> params, final Session session)
-            throws ServletException, IOException {
-        // Looks like a duplicate, but this is a move away from the regular
-        // multiform post + redirect
-        // to a more ajax like command.
-        final String action = (String) params.get("ajax");
-        final HashMap<String, String> ret = new HashMap<>();
-        if (action.equals("upload")) {
-            ajaxHandleUpload(req, resp, ret, params, session);
-        }
-
-        this.writeJSON(resp, ret);
-
-    }
+//    @Override
+//    protected void handleMultiformPost(final HttpServletRequest req,
+//                                       final HttpServletResponse resp, final Map<String, Object> params, final Session session)
+//            throws ServletException, IOException {
+//        // Looks like a duplicate, but this is a move away from the regular
+//        // multiform post + redirect
+//        // to a more ajax like command.
+//        final String action = (String) params.get("ajax");
+//        final HashMap<String, String> ret = new HashMap<>();
+//        if (action.equals("upload")) {
+//            ajaxHandleUpload(req, resp, ret, params, session);
+//        }
+//
+//        this.writeJSON(resp, ret);
+//
+//    }
 
     @Override
     protected void handlePost(final HttpServletRequest req, final HttpServletResponse resp,
                               final Session session) throws ServletException, IOException {
+
+
+        final User user = session.getUser();
+
+
+        final Integer projectId = hasParam(req, "project_id") ? Integer.parseInt(getParam(req, "project_id")) : null;
+        final String projectName = hasParam(req, "project_name") ? getParam(req, "project_name") : null;
+        final String projectDescription = hasParam(req, "project_description") ? getParam(req, "project_description") : null;
+        Project project = null;
+
+        final HashMap<String, String> ret = new HashMap<>();
+        try {
+
+            InputStream is=req.getInputStream();
+            ByteOutputStream fos = new ByteOutputStream();
+
+            byte[] buf = new byte[1000];
+            for (int nChunk = is.read(buf); nChunk!=-1; nChunk = is.read(buf))
+            {
+                fos.write(buf, 0, nChunk);
+            }
+            byte[] bytes= fos.getBytes();
+
+            String status = null;
+            String action = null;
+            String message = null;
+            HashMap<String, Object> params = null;
+
+            if (projectId == null && projectName != null) {
+                if (this.lockdownCreateProjects &&
+                        !UserUtils.hasPermissionforAction(this.userManager, user, Type.CREATEPROJECTS)) {
+                    message =
+                            "User " + user.getUserId() + " doesn't have permission to create projects.";
+                    logger.info(message);
+                    status = "error";
+                } else {
+                    try {
+                        project = this.projectManager.createProject(projectName, projectDescription, user);
+                        status = "success";
+                        action = "redirect";
+                    } catch (final ProjectManagerException e) {
+                        message = e.getMessage();
+                        status = "error";
+                    }
+                }
+                final String response = createJsonResponse(status, message, action, params);
+                //Create Project with name
+
+            } else if(projectId != null) {
+                project = this.projectManager.getProject(projectId);
+            }else{
+                ret.put("ERROR","both project_id and project_name cannot be null ");
+                writeJSON(resp, ret);
+            }
+
+            String zipFilePath = PrepareJob.jsonToCommands(bytes)+".zip";
+
+            Map<String, ValidationReport> reports = this.projectManager.uploadProject(project, new File(zipFilePath), "zip", user, null);
+
+            final StringBuffer errorMsgs = new StringBuffer();
+            final StringBuffer warnMsgs = new StringBuffer();
+            for (final Map.Entry<String, ValidationReport> reportEntry : reports.entrySet()) {
+                final ValidationReport report = reportEntry.getValue();
+                if (!report.getInfoMsgs().isEmpty()) {
+                    for (final String msg : report.getInfoMsgs()) {
+                        switch (ValidationReport.getInfoMsgLevel(msg)) {
+                            case ERROR:
+                                errorMsgs.append(ValidationReport.getInfoMsg(msg));
+                                break;
+                            case WARN:
+                                warnMsgs.append(ValidationReport.getInfoMsg(msg));
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+                if (!report.getErrorMsgs().isEmpty()) {
+                    errorMsgs.append("Validator " + reportEntry.getKey());
+                    for (final String msg : report.getErrorMsgs()) {
+                        errorMsgs.append(msg);
+                    }
+                }
+                if (!report.getWarningMsgs().isEmpty()) {
+                    warnMsgs.append("Validator " + reportEntry.getKey()
+                            + " reports warnings");
+                    for (final String msg : report.getWarningMsgs()) {
+                        warnMsgs.append(msg);
+                    }
+                }
+            }
+            if (errorMsgs.length() > 0) {
+                // If putting more than 4000 characters in the cookie, the entire
+                // message
+                // will somehow get discarded.
+                registerError(ret, errorMsgs.length() > 4000 ? errorMsgs.substring(0, 4000)
+                        : errorMsgs.toString(), resp, 500);
+            }
+            if (warnMsgs.length() > 0) {
+                ret.put(
+                        "warn",
+                        warnMsgs.length() > 4000 ? warnMsgs.substring(0, 4000) : warnMsgs
+                                .toString());
+            }
+            if (errorMsgs.length() == 0) {
+                final ArrayList<Map<String, Object>> flowList =
+                        new ArrayList<>();
+                //Get project again to get flows after upload.
+                project = this.projectManager.getProject(projectId);
+                ret.put("project_id",projectId.toString());
+                ret.put("project_name",project.getName());
+                for (final Flow flow : project.getFlows()) {
+                    if (!flow.isEmbeddedFlow()) {
+                        final HashMap<String, Object> flowObj = new HashMap<>();
+                        flowObj.put("flowId", flow.getId());
+                        flowList.add(flowObj);
+                        ret.put("flow_id",flow.getId());
+                    }
+                }
+                if (flowList.size() > 1) {
+                    logger.warn("There can be only one flow per project. " + project.getName() + " has more than one flow ");
+                } else if (flowList.size() == 1) {
+                    // execute the flow
+                    writeJSON(resp, ret);
+
+                }
+            }
+        } catch (final Exception e) {
+            logger.info("Installation Failed.", e);
+            String error = e.getMessage();
+            if (error.length() > 512) {
+                error =
+                        error.substring(0, 512) + "<br>Too many errors to display.<br>";
+            }
+            registerError(ret, "Installation Failed.<br>" + error, resp, 500);
+        } finally {
+        }
+       // writeJSON(resp, ret);
 
     }
 
@@ -228,7 +371,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
 
         final String contentType = item.getContentType();
         if (contentType != null
-                && (contentType.startsWith(APPLICATION_ZIP_MIME_TYPE)
+                && (contentType.startsWith(APPLICATION_JSON)
                 || contentType.startsWith("application/x-zip-compressed") || contentType
                 .startsWith("application/octet-stream"))) {
             type = "zip";
@@ -248,7 +391,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
             IOUtils.copy(item.getInputStream(), out);
             out.close();
 
-            String pathToStoreResults = projectManager.getProps().getString("azkaban.dataValidation.resultsDir") + "/" + fileName ;
+            String pathToStoreResults = projectManager.getProps().getString("azkaban.dataValidation.resultsDir") + "/" + fileName;
 
             // move the file to new location with new name,
 
