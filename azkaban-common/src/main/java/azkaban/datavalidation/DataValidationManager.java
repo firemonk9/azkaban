@@ -23,19 +23,19 @@ public class DataValidationManager {
     }
 
 
-    public void updateDVResults(int projectId, int execid, String jobId, String jobReturnStatus, Long resultCount, Long expectedCount) {
+    public void updateDVResults(int projectId, int execid, String jobId,String pathToStoreResults,String jobReturnStatus, Long resultCount, Long expectedCount) {
 
         try {
-            jobDVResultsDao.insertJobResults(projectId, execid, jobId, resultCount, expectedCount,jobReturnStatus);
+            jobDVResultsDao.insertJobResults(projectId, execid, jobId, pathToStoreResults,resultCount, expectedCount,jobReturnStatus);
         } catch (ExecutorManagerException e) {
             e.printStackTrace();
         }
     }
 
-    public java.util.List<JobDVResults> fetchDVResults(Integer projectId, Integer exec_id) {
+    public java.util.List<JobDVResults> fetchDVResults( Integer exec_id) {
         List<JobDVResults> re = null;
         try {
-            re=jobDVResultsDao.fetchJobResults(projectId, exec_id);
+            re=jobDVResultsDao.fetchJobResults( exec_id);
 
         } catch (ExecutorManagerException e) {
             e.printStackTrace();

@@ -121,7 +121,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
                              final Session session) throws ServletException, IOException {
         if (hasParam(req, "ajax")) {
             final HashMap<String, Object> ret = new HashMap<>();
-            ajazHandleFetch(req, resp, ret, session);
+            ajaxHandleFetch(req, resp, ret, session);
 
             this.writeJSON(resp, ret);
         }
@@ -158,7 +158,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
         resp.setStatus(returnCode);
     }
 
-    private void ajazHandleFetch(final HttpServletRequest req, final HttpServletResponse resp,
+    private void ajaxHandleFetch(final HttpServletRequest req, final HttpServletResponse resp,
                                  final Map<String, Object> ret, final Session session) {
 
         final User user = session.getUser();
@@ -169,7 +169,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
             if (hasParam(req, "exec_id")) {
                 exec_id = getIntParam(req, "exec_id");
             }
-            java.util.List<JobDVResults> r = dataValidationManager.fetchDVResults(projectId, exec_id);
+            java.util.List<JobDVResults> r = dataValidationManager.fetchDVResults(exec_id);
             java.util.List list = new ArrayList<Map<String, Object>>();
             for (JobDVResults e : r) {
                 Map<String, Object> m = e.getKeyValue();
@@ -256,7 +256,7 @@ public class DVResultsServlet extends LoginAbstractAzkabanServlet {
 
             logger.info("writing to " + archiveFile.getAbsolutePath().toString());
 
-            dataValidationManager.updateDVResults(projectId, execId, jobId, jobReturnStatus, resultCount, expectedCount);
+            dataValidationManager.updateDVResults(projectId, execId, jobId, pathToStoreResults,jobReturnStatus, resultCount, expectedCount);
 
             //unscheduleall/scheduleall should only work with flow which has defined flow trigger
             //unschedule all flows within the old project

@@ -34,7 +34,11 @@ public class JobDVResults {
     private final Long resultCount;
     private final Long expectedCount;
     private final Long check_time;
+    private final String pathToStoreResults;
 
+    public String getPathToStoreResults() {
+        return pathToStoreResults;
+    }
 
     public Long getCheck_time() {
         return check_time;
@@ -75,12 +79,13 @@ public class JobDVResults {
         e.put("resultCount", getResultCount());
         e.put("expectedCount", getExpectedCount());
         e.put("check_time", getCheck_time());
+        e.put("pathToStoreResults",getPathToStoreResults());
         return e;
 
     }
 
 
-    public JobDVResults(int projectId, int execId, String jobId, Long check_time, String jobReturnStatus, Long resultCount, Long expectedCount) {
+    public JobDVResults(int projectId, int execId, String jobId, String pathToStoreResults,Long check_time, String jobReturnStatus, Long resultCount, Long expectedCount) {
 
         this.projectId = projectId;
         this.execid = execId;
@@ -89,5 +94,6 @@ public class JobDVResults {
         this.resultCount = resultCount;
         this.expectedCount = expectedCount;
         this.check_time = check_time;
+        this.pathToStoreResults = pathToStoreResults;
     }
 }

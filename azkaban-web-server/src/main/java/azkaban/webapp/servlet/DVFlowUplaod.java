@@ -36,6 +36,8 @@ import azkaban.user.Role;
 import azkaban.user.User;
 import azkaban.user.UserManager;
 import azkaban.user.UserUtils;
+import azkaban.utils.GZIPUtils;
+import azkaban.utils.JSONUtils;
 import azkaban.utils.Props;
 import azkaban.utils.Utils;
 import azkaban.webapp.AzkabanWebServer;
@@ -51,10 +53,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
 public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
 
@@ -125,12 +127,24 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
     protected void handleGet(final HttpServletRequest req, final HttpServletResponse resp,
                              final Session session) throws ServletException, IOException {
         if (hasParam(req, "ajax")) {
-            final HashMap<String, Object> ret = new HashMap<>();
-            ajazHandleFetch(req, resp, ret, session);
+            final Integer execId = hasParam(req, "exec_id") ? Integer.parseInt(getParam(req, "exec_id")) : null;
 
-            this.writeJSON(resp, ret);
+            List<JobDVResults> jobDVResultsList = dataValidationManager.fetchDVResults(execId);//updateDVResults(projectId, execId, jobId, pathToStoreResults,jobReturnStatus, resultCount, expectedCount);
+            if (jobDVResultsList != null && jobDVResultsList.size() == 1) {
+                JobDVResults res = jobDVResultsList.get(0);
+                String zipFilePath = res.getPathToStoreResults();
+                File f = new File(zipFilePath);
+                byte[] bytes = GZIPUtils.unGzipBytes(Files.readAllBytes(Paths.get(zipFilePath)));
+                final File tempDir = Utils.createTempDir();
+                String fileName = f.getName().replace("zip", "json");
+                Path path = Paths.get(tempDir.getAbsolutePath(), fileName);
+                Files.write(path, bytes);
+                Object obj = JSONUtils.parseJSONFromFile(new File(path.toAbsolutePath().toString()));
+                this.writeJSON(resp, obj);
+            }
+//            final HashMap<String, Object> ret = new HashMap<>();
+//            ajazHandleFetch(req, resp, ret, session);
         }
-
     }
 
 //    @Override
@@ -166,15 +180,14 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
         final HashMap<String, String> ret = new HashMap<>();
         try {
 
-            InputStream is=req.getInputStream();
+            InputStream is = req.getInputStream();
             ByteOutputStream fos = new ByteOutputStream();
 
             byte[] buf = new byte[1000];
-            for (int nChunk = is.read(buf); nChunk!=-1; nChunk = is.read(buf))
-            {
+            for (int nChunk = is.read(buf); nChunk != -1; nChunk = is.read(buf)) {
                 fos.write(buf, 0, nChunk);
             }
-            byte[] bytes= fos.getBytes();
+            byte[] bytes = fos.getBytes();
 
             String status = null;
             String action = null;
@@ -201,14 +214,14 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
                 final String response = createJsonResponse(status, message, action, params);
                 //Create Project with name
 
-            } else if(projectId != null) {
+            } else if (projectId != null) {
                 project = this.projectManager.getProject(projectId);
-            }else{
-                ret.put("ERROR","both project_id and project_name cannot be null ");
+            } else {
+                ret.put("ERROR", "both project_id and project_name cannot be null ");
                 writeJSON(resp, ret);
             }
 
-            String zipFilePath = PrepareJob.jsonToCommands(bytes)+".zip";
+            String zipFilePath = PrepareJob.jsonToCommands(bytes) + ".zip";
 
             Map<String, ValidationReport> reports = this.projectManager.uploadProject(project, new File(zipFilePath), "zip", user, null);
 
@@ -262,14 +275,14 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
                         new ArrayList<>();
                 //Get project again to get flows after upload.
                 project = this.projectManager.getProject(projectId);
-                ret.put("project_id",projectId.toString());
-                ret.put("project_name",project.getName());
+                ret.put("project_id", projectId.toString());
+                ret.put("project_name", project.getName());
                 for (final Flow flow : project.getFlows()) {
                     if (!flow.isEmbeddedFlow()) {
                         final HashMap<String, Object> flowObj = new HashMap<>();
                         flowObj.put("flowId", flow.getId());
                         flowList.add(flowObj);
-                        ret.put("flow_id",flow.getId());
+                        ret.put("flow_id", flow.getId());
                     }
                 }
                 if (flowList.size() > 1) {
@@ -290,7 +303,7 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
             registerError(ret, "Installation Failed.<br>" + error, resp, 500);
         } finally {
         }
-       // writeJSON(resp, ret);
+        // writeJSON(resp, ret);
 
     }
 
@@ -301,30 +314,30 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
         resp.setStatus(returnCode);
     }
 
-    private void ajazHandleFetch(final HttpServletRequest req, final HttpServletResponse resp,
-                                 final Map<String, Object> ret, final Session session) {
-
-        final User user = session.getUser();
-
-        try {
-            final Integer projectId = getIntParam(req, "project_id");//(String) req.getParameter("projectId");
-            Integer exec_id = null;
-            if (hasParam(req, "exec_id")) {
-                exec_id = getIntParam(req, "exec_id");
-            }
-            java.util.List<JobDVResults> r = dataValidationManager.fetchDVResults(projectId, exec_id);
-            java.util.List list = new ArrayList<Map<String, Object>>();
-            for (JobDVResults e : r) {
-                Map<String, Object> m = e.getKeyValue();
-                list.add(m);
-            }
-            ret.put("dv_results", list);
-
-        } catch (ServletException e) {
-            e.printStackTrace();
-        }
-
-    }
+//    private void ajazHandleFetch(final HttpServletRequest req, final HttpServletResponse resp,
+//                                 final Map<String, Object> ret, final Session session) {
+//
+//        final User user = session.getUser();
+//
+//        try {
+//            final Integer projectId = getIntParam(req, "project_id");//(String) req.getParameter("projectId");
+//            Integer exec_id = null;
+//            if (hasParam(req, "exec_id")) {
+//                exec_id = getIntParam(req, "exec_id");
+//            }
+//            java.util.List<JobDVResults> r = dataValidationManager.fetchDVResults(exec_id);
+//            java.util.List list = new ArrayList<Map<String, Object>>();
+//            for (JobDVResults e : r) {
+//                Map<String, Object> m = e.getKeyValue();
+//                list.add(m);
+//            }
+//            ret.put("dv_results", list);
+//
+//        } catch (ServletException e) {
+//            e.printStackTrace();
+//        }
+//
+//    }
 
 
     private void ajaxHandleUpload(final HttpServletRequest req, final HttpServletResponse resp,
@@ -399,7 +412,7 @@ public class DVFlowUplaod extends LoginAbstractAzkabanServlet {
 
             logger.info("writing to " + archiveFile.getAbsolutePath().toString());
 
-            dataValidationManager.updateDVResults(projectId, execId, jobId, jobReturnStatus, resultCount, expectedCount);
+            dataValidationManager.updateDVResults(projectId, execId, jobId, pathToStoreResults, jobReturnStatus, resultCount, expectedCount);
 
             //unscheduleall/scheduleall should only work with flow which has defined flow trigger
             //unschedule all flows within the old project

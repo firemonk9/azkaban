@@ -39,13 +39,13 @@ public class JobDVResultsDao {
         this.dbOperator = databaseOperator;
     }
 
-    public void insertJobResults(int projectId, int execid, String jobId,  Long resultCount, Long expectedCount,String jobReturnStatus)
+    public void insertJobResults(int projectId, int execid, String jobId, String pathToStoreResults ,Long resultCount, Long expectedCount,String jobReturnStatus)
             throws ExecutorManagerException {
 
         logger.info("Status from project id " + projectId+"  jobId "+jobId);
         try {
             this.dbOperator.update(INSERT_EXECUTION_NODE, projectId,
-                    execid, jobId,
+                    execid, jobId,pathToStoreResults,
                     System.currentTimeMillis(),
                     true, resultCount,expectedCount,jobReturnStatus);
         } catch (final SQLException e) {
@@ -54,11 +54,11 @@ public class JobDVResultsDao {
     }
 
 
-    public List<JobDVResults> fetchJobResults(final int projectId)
+    public List<JobDVResults> fetchJobResults(final int execId)
             throws ExecutorManagerException {
 
         try {
-            return this.dbOperator.query(SELECT_EXECUTOR_RESULTS, new JobDVResultsHandler(), projectId);
+            return this.dbOperator.query(SELECT_EXECUTOR_RESULTS, new JobDVResultsHandler(), execId);
         } catch (final SQLException e) {
             throw new ExecutorManagerException("Error fetching num executions", e);
         }
@@ -95,14 +95,15 @@ public class JobDVResultsDao {
                 final int project_id = rs.getInt(1);
                 final int exec_id = rs.getInt(2);
                 final String job_id = rs.getString(3);
-                final Long check_time = rs.getLong(4);
-                final String result = rs.getString(5);
-                final Long result_value = rs.getLong(6);
-                final Long expected_value = rs.getLong(7);
+                final String pathToStoreResults = rs.getString(4);
+                final Long check_time = rs.getLong(5);
+                final String result = rs.getString(6);
+                final Long result_value = rs.getLong(7);
+                final Long expected_value = rs.getLong(8);
 
                 final JobDVResults event =
                         new JobDVResults(project_id, exec_id, job_id,
-                                 check_time, result, result_value, expected_value);
+                                pathToStoreResults,check_time, result, result_value, expected_value);
                 events.add(event);
             } while (rs.next());
 
@@ -110,17 +111,23 @@ public class JobDVResultsDao {
         }
     }
 
+
+    public static final String Columns = "project_id,exec_id,  job_id, result_path ,check_time, "
+            + "result, result_value, expected_value, job_status";
+
+
     private static final String SELECT_EXECUTOR_RESULTS =
-            "SELECT exec_id, project_id,  job_id, check_time, result,result_value, expected_value FROM job_dv_results "
-                    + " WHERE project_id=? ORDER BY check_time ";
+            "SELECT "+Columns+" FROM job_dv_results "
+                    + " WHERE exec_id=?  ";
 
     private static final String SELECT_EXECUTOR_RESULTS_FLOW =
-            "SELECT exec_id, project_id,  job_id, check_time, result,result_value, expected_value FROM job_dv_results "
+            "SELECT "+Columns+" FROM job_dv_results "
                     + " WHERE project_id=? and exec_id = ? ORDER BY check_time ";
 
+
+
     private static final String INSERT_EXECUTION_NODE = "INSERT INTO job_dv_results "
-            + "(project_id,exec_id,  job_id,  check_time, "
-            + "result, result_value, expected_value, job_status) VALUES (?,?,?,?,?,?,?,?)";
+            + "(" + Columns + ") VALUES (?,?,?,?,?,?,?,?,?)";
 //1, 0, 1, shell_end, null, 1532377898291, PASS, 1
 
 }
